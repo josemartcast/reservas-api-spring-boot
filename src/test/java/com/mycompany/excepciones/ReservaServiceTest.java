@@ -2,6 +2,7 @@ package com.mycompany.excepciones;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.TestTemplate;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -588,7 +589,28 @@ void noDebeModificarReservaCuandoLaReprogramacionFalla(){
 
 
 }
+@Test
+void debeObtenerResumenesDeTodasLasReservas(){
+        //given
+   Reserva reserva1 = crearReserva(crearCliente("777777", "jose", "6666666"),5,6,fecha,EstadoReserva.PENDIENTE);
+   Reserva reserva2 = crearReserva(crearCliente("88888","Rosa","5656560"),8,9,fecha,EstadoReserva.PENDIENTE);
+   service.crearReserva(reserva1);
+   service.crearReserva(reserva2);
+   //when
+   List<ReservaResumen> resultado = service.obtenerResumenes();
+   //then
+    assertEquals(2,resultado.size());
+    assertEquals(5,resultado.get(0).numeroMesa());
+    assertEquals(8,resultado.get(1).numeroMesa());
+    assertEquals("Rosa",resultado.get(1).nombreCliente());
+    assertEquals("jose",resultado.get(0).nombreCliente());
+    assertEquals(6, resultado.get(0).numeroPersonas());
+    assertEquals(9, resultado.get(1).numeroPersonas());
+    assertEquals(EstadoReserva.PENDIENTE, resultado.get(0).estado());
+    assertEquals(EstadoReserva.PENDIENTE, resultado.get(1).estado());
 
+
+}
 
     private Cliente crearCliente(
             String dni,

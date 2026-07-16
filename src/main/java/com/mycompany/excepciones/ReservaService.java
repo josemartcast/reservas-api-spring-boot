@@ -7,7 +7,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
-
+import org.springframework.stereotype.Service;
+@Service
 public class ReservaService {
 
     private final List<Reserva> reservas = new ArrayList<>();
@@ -485,5 +486,12 @@ public class ReservaService {
         //cogemos la reserva y le cambiamos los valores.
         Reserva reserva = buscarReserva(mesaActual,fechaActual);
         reserva.reprogramar(nuevaMesa,nuevaFecha);
+    }
+    public List<ReservaResumen> obtenerResumenes(){
+        List<ReservaResumen> reservasResumen = new ArrayList<>();
+        for(Reserva reserva : reservas){
+           reservasResumen.add(convertirAResumen(reserva));
+        }
+        return List.copyOf(reservasResumen);
     }
 }
