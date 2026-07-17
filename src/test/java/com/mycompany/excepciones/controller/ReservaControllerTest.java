@@ -92,7 +92,6 @@ public class ReservaControllerTest {
     @Test
     void debeRechazarReservaConMesaNoValida() throws Exception {
         LocalDate fechaFutura = LocalDate.now().plusDays(1);
-        ReservaResumen resumen = new ReservaResumen(5, fechaFutura, "Jose", 4, EstadoReserva.PENDIENTE);
         String json = """
                 {
                   "dniCliente": "77777777A",
