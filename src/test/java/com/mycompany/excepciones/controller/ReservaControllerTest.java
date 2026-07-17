@@ -150,8 +150,6 @@ public class ReservaControllerTest {
                   "fecha": "%s"
                 }
                 """.formatted(fechaFutura);
-        verify(reservaService, never())
-                .crearReserva(any(Reserva.class));
         mockMvc.perform(post("/api/reservas")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(json))
@@ -164,5 +162,7 @@ public class ReservaControllerTest {
                         .value("El número de mesa debe ser mayor que 0"))
                 .andExpect(jsonPath("$.fieldErrors.numeroPersonas")
                         .value("El número de personas debe ser mayor que 0"));
+        verify(reservaService, never())
+                .crearReserva(any(Reserva.class));
     }
 }
