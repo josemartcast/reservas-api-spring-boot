@@ -469,7 +469,7 @@ public class ReservaService {
                 .toList();
     }
 
-    public void reprogramarReserva(int mesaActual, LocalDate fechaActual, int nuevaMesa, LocalDate nuevaFecha){
+    public Reserva reprogramarReserva(int mesaActual, LocalDate fechaActual, int nuevaMesa, LocalDate nuevaFecha){
 
         //validaciones
         validarFecha(fechaActual);
@@ -486,6 +486,7 @@ public class ReservaService {
         //cogemos la reserva y le cambiamos los valores.
         Reserva reserva = buscarReserva(mesaActual,fechaActual);
         reserva.reprogramar(nuevaMesa,nuevaFecha);
+        return reserva;
     }
     public List<ReservaResumen> obtenerResumenes(){
         List<ReservaResumen> reservasResumen = new ArrayList<>();
