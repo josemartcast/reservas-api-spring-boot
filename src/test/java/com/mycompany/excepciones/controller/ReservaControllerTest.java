@@ -172,7 +172,7 @@ public class ReservaControllerTest {
         LocalDate fechaActual = LocalDate.now();
         LocalDate nuevaFecha = LocalDate.now().plusDays(1);
         Cliente cliente = new Cliente("77777777A", "Jose", "666666666");
-        Reserva reservaReprogramada = new Reserva(cliente, 6, 8, fechaActual, EstadoReserva.PENDIENTE);
+        Reserva reservaReprogramada = new Reserva(cliente, 8, 6, nuevaFecha, EstadoReserva.PENDIENTE);
         ReservaResumen resumen = new ReservaResumen(
                 8,
                 nuevaFecha,
