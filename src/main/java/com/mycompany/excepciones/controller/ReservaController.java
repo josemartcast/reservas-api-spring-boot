@@ -2,6 +2,7 @@ package com.mycompany.excepciones.controller;
 
 import com.mycompany.excepciones.ReservaResumen;
 import com.mycompany.excepciones.ReservaService;
+import jakarta.validation.constraints.Positive;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -44,13 +45,16 @@ public class ReservaController {
         reservaService.crearReserva(reserva);
         return reservaService.convertirAResumen(reserva);
     }
+
     @PatchMapping("/{mesaActual}/{fechaActual}")
     public ReservaResumen reprogramarReserva(
-            @PathVariable int mesaActual,
+            @PathVariable
+            @Positive(message = "El número de mesa actual debe ser mayor que 0")
+            int mesaActual,
             @PathVariable LocalDate fechaActual,
             @Valid @RequestBody ReprogramarReservaRequest request
     ) {
-        Reserva reserva= reservaService.reprogramarReserva(mesaActual,fechaActual, request.nuevaMesa(), request.nuevaFecha());
+        Reserva reserva = reservaService.reprogramarReserva(mesaActual, fechaActual, request.nuevaMesa(), request.nuevaFecha());
         return reservaService.convertirAResumen(reserva);
     }
 

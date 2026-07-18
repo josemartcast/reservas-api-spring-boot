@@ -8,6 +8,10 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
+import org.springframework.context.MessageSourceResolvable;
+import org.springframework.validation.method.ParameterErrors;
+import org.springframework.validation.method.ParameterValidationResult;
+import org.springframework.web.method.annotation.HandlerMethodValidationException;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -44,5 +48,49 @@ public class GlobalExceptionHandler {
         HttpStatus status = HttpStatus.NOT_FOUND;
         ApiError apiError = new ApiError(status.value(),status.getReasonPhrase(),exception.getMessage());
         return ResponseEntity.status(status).body(apiError);
+    }
+    @ExceptionHandler(HandlerMethodValidationException.class)
+    public ResponseEntity<ValidationApiError> manejarErroresValidacionMetodo(
+            HandlerMethodValidationException exception
+    ) {
+        Map<String, String> fieldErrors = new HashMap<>();
+
+        for (ParameterValidationResult result
+                : exception.getParameterValidationResults()) {
+
+            if (result instanceof ParameterErrors parameterErrors) {
+
+                for (FieldError fieldError : parameterErrors.getFieldErrors()) {
+                    fieldErrors.put(
+                            fieldError.getField(),
+                            fieldError.getDefaultMessage()
+                    );
+                }
+
+            } else {
+                String parameterName =
+                        result.getMethodParameter().getParameterName();
+
+                for (MessageSourceResolvable error
+                        : result.getResolvableErrors()) {
+
+                    fieldErrors.put(
+                            parameterName,
+                            error.getDefaultMessage()
+                    );
+                }
+            }
+        }
+
+        HttpStatus status = HttpStatus.BAD_REQUEST;
+
+        ValidationApiError validationApiError =
+                new ValidationApiError(
+                        status.value(),
+                        status.getReasonPhrase(),
+                        fieldErrors
+                );
+
+        return ResponseEntity.status(status).body(validationApiError);
     }
 }

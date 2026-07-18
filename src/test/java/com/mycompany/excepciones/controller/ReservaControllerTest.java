@@ -294,5 +294,29 @@ public class ReservaControllerTest {
 
     }
 
+    @Test
+    void debeRechazarReprogramacionConMesaActualNoValida() throws Exception {
+        LocalDate fechaActual = LocalDate.now();
+        LocalDate nuevaFecha = LocalDate.now().plusDays(1);
+        String json = """
+                {
+                  "nuevaMesa": 8,
+                  "nuevaFecha": "%s"
+                }
+                """.formatted(nuevaFecha);
+        mockMvc.perform(patch(
+                        "/api/reservas/{mesaActual}/{fechaActual}",
+                        0,
+                        fechaActual
+                )
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json)).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.fieldErrors.mesaActual")
+                        .value("El número de mesa actual debe ser mayor que 0"));
+        verifyNoInteractions(reservaService);
+    }
+
 
 }
