@@ -14,7 +14,11 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.ResponseStatus;
+import com.mycompany.excepciones.controller.dto.ReprogramarReservaRequest;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 
+import java.time.LocalDate;
 import java.util.List;
 
 
@@ -38,6 +42,15 @@ public class ReservaController {
         Cliente cliente = new Cliente(request.dniCliente(), request.nombreCliente(), request.telefonoCliente());
         Reserva reserva = new Reserva(cliente, request.numeroMesa(), request.numeroPersonas(), request.fecha(), EstadoReserva.PENDIENTE);
         reservaService.crearReserva(reserva);
+        return reservaService.convertirAResumen(reserva);
+    }
+    @PatchMapping("/{mesaActual}/{fechaActual}")
+    public ReservaResumen reprogramarReserva(
+            @PathVariable int mesaActual,
+            @PathVariable LocalDate fechaActual,
+            @Valid @RequestBody ReprogramarReservaRequest request
+    ) {
+        Reserva reserva= reservaService.reprogramarReserva(mesaActual,fechaActual, request.nuevaMesa(), request.nuevaFecha());
         return reservaService.convertirAResumen(reserva);
     }
 

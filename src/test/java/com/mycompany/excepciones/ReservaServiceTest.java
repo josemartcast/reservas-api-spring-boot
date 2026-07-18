@@ -524,13 +524,14 @@ class ReservaServiceTest {
         Reserva reserva = crearReserva(4, 6, fecha, EstadoReserva.PENDIENTE);
         LocalDate nuevaFecha = fecha.plusDays(1);
         service.crearReserva(reserva);
-        service.reprogramarReserva(4,fecha,8,nuevaFecha);
+        Reserva resultado= service.reprogramarReserva(4,fecha,8,nuevaFecha);
         //when/then
         assertFalse(service.existeReservaParaMesaYFecha(4,fecha));
         assertTrue(service.existeReservaParaMesaYFecha(8,nuevaFecha));
         assertEquals(6,reserva.getNumeroPersonas());
         assertEquals(EstadoReserva.PENDIENTE, reserva.getEstadoReserva());
         assertEquals(nuevaFecha, reserva.getFecha());
+        assertSame(reserva,resultado);
 
     }
     @Test

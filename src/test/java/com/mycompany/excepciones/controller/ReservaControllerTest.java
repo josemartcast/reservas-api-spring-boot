@@ -20,6 +20,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.mockito.ArgumentMatchers.any;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.mockito.Mockito.doThrow;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 
 
 @WebMvcTest(ReservaController.class)
@@ -165,4 +166,133 @@ public class ReservaControllerTest {
         verify(reservaService, never())
                 .crearReserva(any(Reserva.class));
     }
+
+    @Test
+    void debeReprogramarReservaCorrectamente() throws Exception {
+        LocalDate fechaActual = LocalDate.now();
+        LocalDate nuevaFecha = LocalDate.now().plusDays(1);
+        Cliente cliente = new Cliente("77777777A", "Jose", "666666666");
+        Reserva reservaReprogramada = new Reserva(cliente, 6, 8, fechaActual, EstadoReserva.PENDIENTE);
+        ReservaResumen resumen = new ReservaResumen(
+                8,
+                nuevaFecha,
+                "Jose",
+                6,
+                EstadoReserva.PENDIENTE
+        );
+        String json = """
+                {
+                  "nuevaMesa": 8,
+                  "nuevaFecha": "%s"
+                }
+                """.formatted(nuevaFecha);
+        when(reservaService.reprogramarReserva(
+                4,
+                fechaActual,
+                8,
+                nuevaFecha
+        )).thenReturn(reservaReprogramada);
+
+        when(reservaService.convertirAResumen(reservaReprogramada))
+                .thenReturn(resumen);
+        mockMvc.perform(patch(
+                        "/api/reservas/{mesaActual}/{fechaActual}",
+                        4,
+                        fechaActual
+                )
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.numeroMesa").value(8))
+                .andExpect(jsonPath("$.fecha").value(nuevaFecha.toString()))
+                .andExpect(jsonPath("$.nombreCliente").value("Jose"))
+                .andExpect(jsonPath("$.numeroPersonas").value(6));
+    }
+
+    @Test
+    void debeRechazarReprogramacionConNuevaMesaNoValida() throws Exception {
+        LocalDate fechaActual = LocalDate.now();
+        LocalDate nuevaFecha = LocalDate.now().plusDays(1);
+        String json = """
+                {
+                  "nuevaMesa": 0,
+                  "nuevaFecha": "%s"
+                }
+                """.formatted(nuevaFecha);
+        mockMvc.perform(patch(
+                        "/api/reservas/{mesaActual}/{fechaActual}",
+                        4,
+                        fechaActual
+                )
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json)).andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.fieldErrors.nuevaMesa").value("El número de mesa debe ser mayor que 0"));
+        verifyNoInteractions(reservaService);
+    }
+
+    @Test
+    void debeResponderNotFoundCuandoLaReservaNoExiste() throws Exception {
+        LocalDate fechaActual = LocalDate.now();
+        LocalDate nuevaFecha = LocalDate.now().plusDays(1);
+        String json = """
+                {
+                  "nuevaMesa": 8,
+                  "nuevaFecha": "%s"
+                }
+                """.formatted(nuevaFecha);
+        when(reservaService.reprogramarReserva(
+                4,
+                fechaActual,
+                8,
+                nuevaFecha
+        )).thenThrow(
+                new ReservaNoEncontradaException("Reserva no encontrada.")
+        );
+        mockMvc.perform(patch(
+                        "/api/reservas/{mesaActual}/{fechaActual}",
+                        4,
+                        fechaActual
+                )
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json)).andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.status").value(404))
+                .andExpect(jsonPath("$.error").value("Not Found"))
+                .andExpect(jsonPath("$.message").value("Reserva no encontrada."));
+
+    }
+
+    @Test
+    void debeResponderConflictCuandoLaNuevaMesaEstaOcupada() throws Exception {
+        LocalDate fechaActual = LocalDate.now();
+        LocalDate nuevaFecha = LocalDate.now().plusDays(1);
+        String json = """
+                {
+                  "nuevaMesa": 8,
+                  "nuevaFecha": "%s"
+                }
+                """.formatted(nuevaFecha);
+        when(reservaService.reprogramarReserva(
+                4,
+                fechaActual,
+                8,
+                nuevaFecha
+        )).thenThrow(
+                new MesaOcupadaException("Mesa ocupada en esa fecha.")
+        );
+        mockMvc.perform(patch(
+                        "/api/reservas/{mesaActual}/{fechaActual}",
+                        4,
+                        fechaActual
+                )
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(json)).andExpect(status().isConflict())
+                .andExpect(jsonPath("$.status").value(409))
+                .andExpect(jsonPath("$.error").value("Conflict"))
+                .andExpect(jsonPath("$.message").value("Mesa ocupada en esa fecha."));
+
+    }
+
+
 }

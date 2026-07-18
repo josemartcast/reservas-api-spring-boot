@@ -1,6 +1,7 @@
 package com.mycompany.excepciones.controller.error;
 
 import com.mycompany.excepciones.MesaOcupadaException;
+import com.mycompany.excepciones.ReservaNoEncontradaException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.ExceptionHandler;
@@ -35,5 +36,13 @@ public class GlobalExceptionHandler {
         }
         ValidationApiError validationApiError = new ValidationApiError(status.value(), status.getReasonPhrase(), fieldErrors);
         return ResponseEntity.status(status).body(validationApiError);
+    }
+    @ExceptionHandler(ReservaNoEncontradaException.class)
+    public ResponseEntity<ApiError> manejarReservaNoEncontrada(
+            ReservaNoEncontradaException exception
+    ) {
+        HttpStatus status = HttpStatus.NOT_FOUND;
+        ApiError apiError = new ApiError(status.value(),status.getReasonPhrase(),exception.getMessage());
+        return ResponseEntity.status(status).body(apiError);
     }
 }
