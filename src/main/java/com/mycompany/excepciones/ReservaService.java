@@ -8,19 +8,28 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
+import com.mycompany.excepciones.repository.ClienteRepository;
+import com.mycompany.excepciones.repository.ReservaRepository;
+import org.springframework.transaction.annotation.Transactional;
 @Service
+@Transactional(readOnly = true)
 public class ReservaService {
 
-    private final List<Reserva> reservas = new ArrayList<>();
 
+    private final ReservaRepository reservaRepository;
+    private final ClienteRepository clienteRepository;
+    public ReservaService(
+            ReservaRepository reservaRepository,
+            ClienteRepository clienteRepository
+    ) {
+        this.reservaRepository = reservaRepository;
+        this.clienteRepository = clienteRepository;
+    }
+    @Transactional
     public void crearReserva(Reserva nuevaReserva) {
         validarReserva(nuevaReserva);
 
-        boolean mesaOcupada = reservas.stream()
-                .anyMatch(reserva
-                        -> reserva.getNumeroMesa() == nuevaReserva.getNumeroMesa()
-                && reserva.getFecha().equals(nuevaReserva.getFecha())
-                );
+        boolean mesaOcupada = reservaRepository.existsByNumeroMesaAndFecha(nuevaReserva.getNumeroMesa(),nuevaReserva.getFecha());
 
         if (mesaOcupada) {
             throw new MesaOcupadaException(
@@ -29,27 +38,31 @@ public class ReservaService {
                     + nuevaReserva.getFecha()
             );
         }
+        Cliente clienteRecibido = nuevaReserva.getCliente();
 
-        reservas.add(nuevaReserva);
+        Cliente clientePersistido = clienteRepository
+                .findByDni(clienteRecibido.getDni())
+                .orElseGet(() -> clienteRepository.save(clienteRecibido));
+
+        nuevaReserva.asignarCliente(clientePersistido);
+        reservaRepository.save(nuevaReserva);
     }
-
+    @Transactional
     public void cancelarReserva(int numeroMesa, LocalDate fecha) {
         Reserva reserva = buscarReserva(numeroMesa, fecha);
-        reservas.remove(reserva);
+        reservaRepository.delete(reserva);
     }
 
     public List<Reserva> buscarReservasPorFecha(LocalDate fecha) {
         validarFecha(fecha);
 
-        return reservas.stream()
-                .filter(reserva -> reserva.getFecha().equals(fecha))
-                .toList();
+        return reservaRepository.findAllByFecha(fecha);
     }
 
     public int calcularTotalPersonasPorFecha(LocalDate fecha) {
         validarFecha(fecha);
 
-        return reservas.stream()
+        return reservaRepository.findAllByFecha(fecha).stream()
                 .filter(reserva -> reserva.getFecha().equals(fecha))
                 .mapToInt(Reserva::getNumeroPersonas)
                 .sum();
@@ -58,21 +71,14 @@ public class ReservaService {
     public long contarReservasPorFecha(LocalDate fecha) {
         validarFecha(fecha);
 
-        return reservas.stream()
-                .filter(reserva -> reserva.getFecha().equals(fecha))
-                .count();
+        return reservaRepository.findAllByFecha(fecha).stream().count();
     }
 
     public Optional<Reserva> buscarReservaOpcional(int numeroMesa, LocalDate fecha) {
         validarNumeroMesa(numeroMesa);
         validarFecha(fecha);
 
-        return reservas.stream()
-                .filter(reserva
-                        -> reserva.getNumeroMesa() == numeroMesa
-                && reserva.getFecha().equals(fecha)
-                )
-                .findFirst();
+        return reservaRepository.findByNumeroMesaAndFecha(numeroMesa, fecha);
     }
 
     public Reserva buscarReserva(int numeroMesa, LocalDate fecha) {
@@ -88,7 +94,7 @@ public class ReservaService {
     public List<Reserva> buscarReservasDeCliente(String dni) {
         validarDni(dni);
 
-        return reservas.stream()
+        return reservaRepository.findAll().stream()
                 .filter(reserva -> reserva.getCliente().getDni().equals(dni))
                 .toList();
     }
@@ -96,14 +102,14 @@ public class ReservaService {
     public int calcularTotalPersonasReservadasPorCliente(String dni) {
         validarDni(dni);
 
-        return reservas.stream()
+        return reservaRepository.findAll().stream()
                 .filter(reserva -> reserva.getCliente().getDni().equals(dni))
                 .mapToInt(Reserva::getNumeroPersonas)
                 .sum();
     }
 
     public Reserva buscarReservaConMasPersonas() {
-        return reservas.stream()
+        return reservaRepository.findAll().stream()
                 .max(Comparator.comparingInt(Reserva::getNumeroPersonas))
                 .orElseThrow(() -> new ReservaNoEncontradaException(
                 "No hay reservas registradas."
@@ -114,40 +120,36 @@ public class ReservaService {
         validarNumeroMesa(numeroMesa);
         validarFecha(fecha);
 
-        return reservas.stream()
-                .anyMatch(reserva
-                        -> reserva.getNumeroMesa() == numeroMesa
-                && reserva.getFecha().equals(fecha)
-                );
+        return reservaRepository.existsByNumeroMesaAndFecha(numeroMesa,fecha);
     }
 
     public boolean todasLasReservasTienenPersonas() {
-        return reservas.stream()
+        return reservaRepository.findAll().stream()
                 .allMatch(reserva -> reserva.getNumeroPersonas() > 0);
     }
 
     public boolean ningunaReservaParaMesa(int numeroMesa) {
         validarNumeroMesa(numeroMesa);
 
-        return reservas.stream()
+        return reservaRepository.findAll().stream()
                 .noneMatch(reserva -> reserva.getNumeroMesa() == numeroMesa);
     }
 
     public List<Reserva> ordenarReservasPorNumeroPersonasDescendente() {
-        return reservas.stream()
+        return reservaRepository.findAll().stream()
                 .sorted(Comparator.comparingInt(Reserva::getNumeroPersonas).reversed())
                 .toList();
     }
 
     public List<Reserva> ordenarReservasPorFechaYMesa() {
-        return reservas.stream()
+        return reservaRepository.findAll().stream()
                 .sorted(Comparator.comparing(Reserva::getFecha)
                         .thenComparingInt(Reserva::getNumeroMesa))
                 .toList();
     }
 
     public List<Reserva> ordenarPorFechaYPersonasDescendente() {
-        return reservas.stream()
+        return reservaRepository.findAll().stream()
                 .sorted(Comparator.comparing(Reserva::getFecha)
                         .thenComparing(
                                 Comparator.comparingInt(Reserva::getNumeroPersonas)
@@ -157,7 +159,7 @@ public class ReservaService {
     }
 
     public List<Reserva> ordenarPorPersonasDescendenteYMesaAscendente() {
-        return reservas.stream()
+        return reservaRepository.findAll().stream()
                 .sorted(Comparator.comparingInt(Reserva::getNumeroPersonas)
                         .reversed()
                         .thenComparingInt(Reserva::getNumeroMesa))
@@ -165,27 +167,27 @@ public class ReservaService {
     }
 
     public List<Integer> obtenerNumerosDeMesa() {
-        return reservas.stream()
+        return reservaRepository.findAll().stream()
                 .map(Reserva::getNumeroMesa)
                 .toList();
     }
 
     public List<String> obtenerNombresClientesConReservasGrandes() {
-        return reservas.stream()
+        return reservaRepository.findAll().stream()
                 .filter(reserva -> reserva.getNumeroPersonas() > 4)
                 .map(reserva -> reserva.getCliente().getNombre())
                 .toList();
     }
 
     public List<String> obtenerNombresClientesSinRepetir() {
-        return reservas.stream()
+        return reservaRepository.findAll().stream()
                 .map(reserva -> reserva.getCliente().getNombre())
                 .distinct()
                 .toList();
     }
 
     public List<String> obtenerNombresClientesDeReservasGrandesOrdenados() {
-        return reservas.stream()
+        return reservaRepository.findAll().stream()
                 .filter(reserva -> reserva.getNumeroPersonas() > 4)
                 .map(reserva -> reserva.getCliente().getNombre())
                 .distinct()
@@ -194,21 +196,21 @@ public class ReservaService {
     }
 
     public List<Reserva> obtenerTresReservasConMasPersonas() {
-        return reservas.stream()
+        return reservaRepository.findAll().stream()
                 .sorted(Comparator.comparingInt(Reserva::getNumeroPersonas).reversed())
                 .limit(3)
                 .toList();
     }
 
     public List<Reserva> obtenerReservasSaltandoLasDosPrimeras() {
-        return reservas.stream()
+        return reservaRepository.findAll().stream()
                 .sorted(Comparator.comparingInt(Reserva::getNumeroPersonas).reversed())
                 .skip(2)
                 .toList();
     }
 
     public List<Reserva> obtenerSegundaPaginaDeTresReservas() {
-        return reservas.stream()
+        return reservaRepository.findAll().stream()
                 .sorted(Comparator.comparingInt(Reserva::getNumeroPersonas).reversed())
                 .skip(3)
                 .limit(3)
@@ -216,12 +218,12 @@ public class ReservaService {
     }
 
     public Map<LocalDate, List<Reserva>> agruparReservasPorFecha() {
-        return reservas.stream()
+        return reservaRepository.findAll().stream()
                 .collect(Collectors.groupingBy(Reserva::getFecha));
     }
 
     public Map<LocalDate, Long> contarReservasAgrupadasPorFecha() {
-        return reservas.stream()
+        return reservaRepository.findAll().stream()
                 .collect(Collectors.groupingBy(
                         Reserva::getFecha,
                         Collectors.counting()
@@ -229,7 +231,7 @@ public class ReservaService {
     }
 
     public Map<LocalDate, Integer> sumarPersonasPorFecha() {
-        return reservas.stream()
+        return reservaRepository.findAll().stream()
                 .collect(Collectors.groupingBy(
                         Reserva::getFecha,
                         Collectors.summingInt(Reserva::getNumeroPersonas)
@@ -237,14 +239,14 @@ public class ReservaService {
     }
 
     public Map<String, List<Reserva>> agruparReservasPorDniCliente() {
-        return reservas.stream()
+        return reservaRepository.findAll().stream()
                 .collect(Collectors.groupingBy(
                         reserva -> reserva.getCliente().getDni()
                 ));
     }
 
     public Map<String, Long> contarReservasPorDniCliente() {
-        return reservas.stream()
+        return reservaRepository.findAll().stream()
                 .collect(Collectors.groupingBy(
                         reserva -> reserva.getCliente().getDni(),
                         Collectors.counting()
@@ -252,7 +254,7 @@ public class ReservaService {
     }
 
     public Map<String, Integer> sumarPersonasPorDniCliente() {
-        return reservas.stream()
+        return reservaRepository.findAll().stream()
                 .collect(Collectors.groupingBy(
                         reserva -> reserva.getCliente().getDni(),
                         Collectors.summingInt(Reserva::getNumeroPersonas)
@@ -262,7 +264,7 @@ public class ReservaService {
     public List<Reserva> buscarReservasPorEstado(EstadoReserva estadoReserva) {
         validarEstado(estadoReserva);
 
-        return reservas.stream()
+        return reservaRepository.findAll().stream()
                 .filter(reserva -> reserva.getEstadoReserva() == estadoReserva)
                 .toList();
     }
@@ -270,11 +272,11 @@ public class ReservaService {
     public long contarReservasPorEstado(EstadoReserva estadoReserva) {
         validarEstado(estadoReserva);
 
-        return reservas.stream()
+        return reservaRepository.findAll().stream()
                 .filter(reserva -> reserva.getEstadoReserva() == estadoReserva)
                 .count();
     }
-
+    @Transactional
     public void cambiarEstadoReserva(
             int numeroMesa,
             LocalDate fecha,
@@ -293,18 +295,18 @@ public class ReservaService {
                 reserva.cancelar();
         }
     }
-
+    @Transactional
     public void marcarReservaComoCancelada(int numeroMesa, LocalDate fecha) {
         cambiarEstadoReserva(numeroMesa, fecha, EstadoReserva.CANCELADA);
     }
 
     public Map<EstadoReserva, List<Reserva>> agruparReservasPorEstado() {
-        return reservas.stream()
+        return reservaRepository.findAll().stream()
                 .collect(Collectors.groupingBy(Reserva::getEstadoReserva));
     }
 
     public Map<EstadoReserva, Long> contarReservasAgrupadasPorEstado() {
-        return reservas.stream()
+        return reservaRepository.findAll().stream()
                 .collect(Collectors.groupingBy(
                         Reserva::getEstadoReserva,
                         Collectors.counting()
@@ -314,7 +316,7 @@ public class ReservaService {
     public List<Reserva> obtenerReservasConfirmadasPorFecha(LocalDate fecha) {
         validarFecha(fecha);
 
-        return reservas.stream()
+        return reservaRepository.findAllByFecha(fecha).stream()
                 .filter(reserva -> reserva.getFecha().equals(fecha))
                 .filter(reserva -> reserva.getEstadoReserva() == EstadoReserva.CONFIRMADA)
                 .sorted(Comparator.comparingInt(Reserva::getNumeroPersonas).reversed())
@@ -324,7 +326,7 @@ public class ReservaService {
     public Optional<Reserva> buscarPrimeraReservaConfirmadaPorFecha(LocalDate fecha) {
         validarFecha(fecha);
 
-        return reservas.stream()
+        return reservaRepository.findAllByFecha(fecha).stream()
                 .filter(reserva
                         -> reserva.getFecha().equals(fecha)
                 && reserva.getEstadoReserva() == EstadoReserva.CONFIRMADA
@@ -363,13 +365,13 @@ public class ReservaService {
     }
 
     public List<ReservaResumen> obtenerTodosLosResumenes() {
-        return reservas.stream()
+        return reservaRepository.findAll().stream()
                 .map(this::convertirAResumen)
                 .toList();
     }
 
     public List<ReservaResumen> obtenerResumenesConfirmadosOrdenados() {
-        return reservas.stream()
+        return reservaRepository.findAll().stream()
                 .filter(reserva -> reserva.getEstadoReserva() == EstadoReserva.CONFIRMADA)
                 .sorted(Comparator.comparingInt(Reserva::getNumeroPersonas).reversed())
                 .map(this::convertirAResumen)
@@ -377,7 +379,7 @@ public class ReservaService {
     }
 
     public List<Reserva> getReservas() {
-        return List.copyOf(reservas);
+        return List.copyOf(reservaRepository.findAll());
     }
 
     private void validarReserva(Reserva reserva) {
@@ -415,7 +417,7 @@ public class ReservaService {
             throw new IllegalArgumentException("El numero de personas tiene que ser superior a 0");
         }
     }
-
+    @Transactional
     public void cambiarMesaReserva(
             int numeroMesaActual,
             LocalDate fecha,
@@ -436,7 +438,7 @@ public class ReservaService {
         Reserva reserva = buscarReserva(numeroMesaActual, fecha);
         reserva.cambiarMesa(nuevaMesa);
     }
-
+    @Transactional
     public void cambiarNumeroPersonasReserva(
             int numeroMesa,
             LocalDate fecha,
@@ -455,7 +457,7 @@ public class ReservaService {
         validarFecha(fecha);
         validarEstado(estadoReserva);
 
-        return reservas.stream()
+        return reservaRepository.findAll().stream()
                 .filter(reserva
                         -> reserva.getFecha().equals(fecha)
                 && reserva.getEstadoReserva() == estadoReserva
@@ -468,7 +470,7 @@ public class ReservaService {
                 .map(this::convertirAResumen)
                 .toList();
     }
-
+    @Transactional
     public Reserva reprogramarReserva(int mesaActual, LocalDate fechaActual, int nuevaMesa, LocalDate nuevaFecha){
 
         //validaciones
@@ -490,7 +492,7 @@ public class ReservaService {
     }
     public List<ReservaResumen> obtenerResumenes(){
         List<ReservaResumen> reservasResumen = new ArrayList<>();
-        for(Reserva reserva : reservas){
+        for(Reserva reserva : reservaRepository.findAll()){
            reservasResumen.add(convertirAResumen(reserva));
         }
         return List.copyOf(reservasResumen);
