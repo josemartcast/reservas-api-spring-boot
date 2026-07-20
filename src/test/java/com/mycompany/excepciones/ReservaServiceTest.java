@@ -1,5 +1,7 @@
 package com.mycompany.excepciones;
 
+import com.mycompany.excepciones.repository.ClienteRepository;
+import com.mycompany.excepciones.repository.ReservaRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.TestTemplate;
@@ -8,17 +10,25 @@ import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
 
+import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
+import org.springframework.beans.factory.annotation.Autowired;
+
 import static org.junit.jupiter.api.Assertions.*;
 
+@DataJpaTest
 class ReservaServiceTest {
 
     private ReservaService service;
     private Cliente cliente;
     private LocalDate fecha;
+    @Autowired
+    private ReservaRepository reservaRepository;
+    @Autowired
+    private ClienteRepository clienteRepository;
 
     @BeforeEach
     void setUp() {
-        service = new ReservaService();
+        service = new ReservaService(reservaRepository, clienteRepository);
 
         cliente = crearCliente(
                 "12345678A",
@@ -518,100 +528,106 @@ class ReservaServiceTest {
 
         assertEquals(1, service.getReservas().size());
     }
+
     @Test
-    void debeReprogramarReservaCorrectamente(){
-    //given
+    void debeReprogramarReservaCorrectamente() {
+        //given
         Reserva reserva = crearReserva(4, 6, fecha, EstadoReserva.PENDIENTE);
         LocalDate nuevaFecha = fecha.plusDays(1);
         service.crearReserva(reserva);
-        Reserva resultado= service.reprogramarReserva(4,fecha,8,nuevaFecha);
+        Reserva resultado = service.reprogramarReserva(4, fecha, 8, nuevaFecha);
         //when/then
-        assertFalse(service.existeReservaParaMesaYFecha(4,fecha));
-        assertTrue(service.existeReservaParaMesaYFecha(8,nuevaFecha));
-        assertEquals(6,reserva.getNumeroPersonas());
+        assertFalse(service.existeReservaParaMesaYFecha(4, fecha));
+        assertTrue(service.existeReservaParaMesaYFecha(8, nuevaFecha));
+        assertEquals(6, reserva.getNumeroPersonas());
         assertEquals(EstadoReserva.PENDIENTE, reserva.getEstadoReserva());
         assertEquals(nuevaFecha, reserva.getFecha());
-        assertSame(reserva,resultado);
+        assertSame(reserva, resultado);
 
     }
+
     @Test
-     void debePermitirReprogramarMismaMesaEnFechaDistinta(){
+    void debePermitirReprogramarMismaMesaEnFechaDistinta() {
         //given
-        Reserva reserva = crearReserva(4,6,fecha,EstadoReserva.PENDIENTE);
+        Reserva reserva = crearReserva(4, 6, fecha, EstadoReserva.PENDIENTE);
         LocalDate nuevaFecha = fecha.plusDays(1);
         service.crearReserva(reserva);
 
         //when
-        service.reprogramarReserva(4,fecha,4,nuevaFecha);
+        service.reprogramarReserva(4, fecha, 4, nuevaFecha);
         //then
-        assertFalse(service.existeReservaParaMesaYFecha(4,fecha));
-        assertTrue(service.existeReservaParaMesaYFecha(4,nuevaFecha));
+        assertFalse(service.existeReservaParaMesaYFecha(4, fecha));
+        assertTrue(service.existeReservaParaMesaYFecha(4, nuevaFecha));
         assertTrue(reserva.getFecha().equals(nuevaFecha));
-        assertTrue(reserva.getNumeroMesa()==4);
+        assertTrue(reserva.getNumeroMesa() == 4);
 
     }
-@Test
-void debeLanzarExcepcionCuandoReservaOriginalNoExiste(){
+
+    @Test
+    void debeLanzarExcepcionCuandoReservaOriginalNoExiste() {
         //given
-    Reserva reserva = crearReserva(5,6,fecha, EstadoReserva.CONFIRMADA);
-    LocalDate nuevaFecha = fecha.plusDays(1);
-    service.crearReserva(reserva);
-    assertThrows(ReservaNoEncontradaException.class,()->service.reprogramarReserva(4,fecha,8,nuevaFecha));
-}
-@Test
-void debeLanzarExcepcionCuandoNuevaMesaEstaOcupada(){
+        Reserva reserva = crearReserva(5, 6, fecha, EstadoReserva.CONFIRMADA);
+        LocalDate nuevaFecha = fecha.plusDays(1);
+        service.crearReserva(reserva);
+        assertThrows(ReservaNoEncontradaException.class, () -> service.reprogramarReserva(4, fecha, 8, nuevaFecha));
+    }
+
+    @Test
+    void debeLanzarExcepcionCuandoNuevaMesaEstaOcupada() {
         //given
         LocalDate nuevaFecha = fecha.plusDays(1);
-        Reserva reserva1 = crearReserva(4,6,fecha,EstadoReserva.CONFIRMADA);
-        Reserva reserva2 = crearReserva(8,6,nuevaFecha,EstadoReserva.CONFIRMADA);
+        Reserva reserva1 = crearReserva(4, 6, fecha, EstadoReserva.CONFIRMADA);
+        Reserva reserva2 = crearReserva(8, 6, nuevaFecha, EstadoReserva.CONFIRMADA);
         service.crearReserva(reserva1);
         service.crearReserva(reserva2);
         //when then
-    assertThrows(MesaOcupadaException.class,()-> service.reprogramarReserva(4,fecha,8,nuevaFecha));
+        assertThrows(MesaOcupadaException.class, () -> service.reprogramarReserva(4, fecha, 8, nuevaFecha));
 
-}
-@Test
-void noDebeModificarReservaCuandoLaReprogramacionFalla(){
-    //given
-    LocalDate nuevaFecha = fecha.plusDays(1);
-    Reserva reserva1 = crearReserva(4,6,fecha,EstadoReserva.CONFIRMADA);
-    Reserva reserva2 = crearReserva(8,6,nuevaFecha,EstadoReserva.CONFIRMADA);
-    service.crearReserva(reserva1);
-    service.crearReserva(reserva2);
-    //when
-    assertThrows(MesaOcupadaException.class,()-> service.reprogramarReserva(4,fecha,8,nuevaFecha));
-    //then
-    assertTrue(service.existeReservaParaMesaYFecha(4,fecha));
-    assertTrue(service.existeReservaParaMesaYFecha(8,nuevaFecha));
-    assertEquals(6,reserva1.getNumeroPersonas());
-    assertEquals(6,reserva2.getNumeroPersonas());
-    assertEquals(EstadoReserva.CONFIRMADA,reserva1.getEstadoReserva());
-    assertEquals(EstadoReserva.CONFIRMADA,reserva2.getEstadoReserva());
+    }
 
-
-}
-@Test
-void debeObtenerResumenesDeTodasLasReservas(){
+    @Test
+    void noDebeModificarReservaCuandoLaReprogramacionFalla() {
         //given
-   Reserva reserva1 = crearReserva(crearCliente("777777", "jose", "6666666"),5,6,fecha,EstadoReserva.PENDIENTE);
-   Reserva reserva2 = crearReserva(crearCliente("88888","Rosa","5656560"),8,9,fecha,EstadoReserva.PENDIENTE);
-   service.crearReserva(reserva1);
-   service.crearReserva(reserva2);
-   //when
-   List<ReservaResumen> resultado = service.obtenerResumenes();
-   //then
-    assertEquals(2,resultado.size());
-    assertEquals(5,resultado.get(0).numeroMesa());
-    assertEquals(8,resultado.get(1).numeroMesa());
-    assertEquals("Rosa",resultado.get(1).nombreCliente());
-    assertEquals("jose",resultado.get(0).nombreCliente());
-    assertEquals(6, resultado.get(0).numeroPersonas());
-    assertEquals(9, resultado.get(1).numeroPersonas());
-    assertEquals(EstadoReserva.PENDIENTE, resultado.get(0).estado());
-    assertEquals(EstadoReserva.PENDIENTE, resultado.get(1).estado());
+        LocalDate nuevaFecha = fecha.plusDays(1);
+        Reserva reserva1 = crearReserva(4, 6, fecha, EstadoReserva.CONFIRMADA);
+        Reserva reserva2 = crearReserva(8, 6, nuevaFecha, EstadoReserva.CONFIRMADA);
+        service.crearReserva(reserva1);
+        service.crearReserva(reserva2);
+        //when
+        assertThrows(MesaOcupadaException.class, () -> service.reprogramarReserva(4, fecha, 8, nuevaFecha));
+        //then
+        assertTrue(service.existeReservaParaMesaYFecha(4, fecha));
+        assertTrue(service.existeReservaParaMesaYFecha(8, nuevaFecha));
+        assertEquals(6, reserva1.getNumeroPersonas());
+        assertEquals(6, reserva2.getNumeroPersonas());
+        assertEquals(EstadoReserva.CONFIRMADA, reserva1.getEstadoReserva());
+        assertEquals(EstadoReserva.CONFIRMADA, reserva2.getEstadoReserva());
 
 
-}
+    }
+
+    @Test
+    void debeObtenerResumenesDeTodasLasReservas() {
+        //given
+        Reserva reserva1 = crearReserva(crearCliente("777777", "jose", "6666666"), 5, 6, fecha, EstadoReserva.PENDIENTE);
+        Reserva reserva2 = crearReserva(crearCliente("88888", "Rosa", "5656560"), 8, 9, fecha, EstadoReserva.PENDIENTE);
+        service.crearReserva(reserva1);
+        service.crearReserva(reserva2);
+        //when
+        List<ReservaResumen> resultado = service.obtenerResumenes();
+        //then
+        assertEquals(2, resultado.size());
+        assertEquals(5, resultado.get(0).numeroMesa());
+        assertEquals(8, resultado.get(1).numeroMesa());
+        assertEquals("Rosa", resultado.get(1).nombreCliente());
+        assertEquals("jose", resultado.get(0).nombreCliente());
+        assertEquals(6, resultado.get(0).numeroPersonas());
+        assertEquals(9, resultado.get(1).numeroPersonas());
+        assertEquals(EstadoReserva.PENDIENTE, resultado.get(0).estado());
+        assertEquals(EstadoReserva.PENDIENTE, resultado.get(1).estado());
+
+
+    }
 
     private Cliente crearCliente(
             String dni,
@@ -633,6 +649,195 @@ void debeObtenerResumenesDeTodasLasReservas(){
                 numeroPersonas,
                 fecha,
                 estadoReserva
+        );
+    }
+
+    @Test
+    void debeEncontrarLaReservaDesdeOtraInstanciaDelServicio() {
+        // given
+        Reserva reserva = crearReserva(
+                4,
+                6,
+                fecha,
+                EstadoReserva.PENDIENTE
+        );
+
+        service.crearReserva(reserva);
+
+        ReservaService otroService = new ReservaService(
+                reservaRepository,
+                clienteRepository
+        );
+
+        // when
+        boolean existe = otroService.existeReservaParaMesaYFecha(4, fecha);
+
+        // then
+        assertTrue(existe);
+    }
+
+    @Test
+    void debeRecuperarLaReservaDesdeOtraInstanciaDelServicio() {
+        // given
+        Reserva reserva = crearReserva(
+                4,
+                6,
+                fecha,
+                EstadoReserva.PENDIENTE
+        );
+
+        service.crearReserva(reserva);
+
+        ReservaService otroService = new ReservaService(
+                reservaRepository,
+                clienteRepository
+        );
+
+        // when
+        Reserva resultado = otroService.buscarReserva(4, fecha);
+
+        // then
+        assertNotNull(resultado.getId());
+        assertEquals(4, resultado.getNumeroMesa());
+        assertEquals(6, resultado.getNumeroPersonas());
+        assertEquals(fecha, resultado.getFecha());
+    }
+
+    @Test
+    void debeEliminarLaReservaDeLaBaseDeDatosAlCancelar() {
+        // given
+        Reserva reserva = crearReserva(
+                4,
+                6,
+                fecha,
+                EstadoReserva.PENDIENTE
+        );
+
+        service.crearReserva(reserva);
+
+        ReservaService otroService = new ReservaService(
+                reservaRepository,
+                clienteRepository
+        );
+
+        // when
+        otroService.cancelarReserva(4, fecha);
+
+        // then
+        assertFalse(
+                reservaRepository.existsByNumeroMesaAndFecha(4, fecha)
+        );
+    }
+
+    @Test
+    void debeBuscarPorFechaDesdeOtraInstanciaDelServicio() {
+        // given
+        Reserva reserva1 = crearReserva(
+                4, 6, fecha, EstadoReserva.PENDIENTE
+        );
+
+        Reserva reserva2 = crearReserva(
+                8, 3, fecha, EstadoReserva.CONFIRMADA
+        );
+
+        service.crearReserva(reserva1);
+        service.crearReserva(reserva2);
+
+        ReservaService otroService = new ReservaService(
+                reservaRepository,
+                clienteRepository
+        );
+
+        // when
+        List<Reserva> resultado =
+                otroService.buscarReservasPorFecha(fecha);
+
+        // then
+        assertEquals(2, resultado.size());
+        assertTrue(resultado.contains(reserva1));
+        assertTrue(resultado.contains(reserva2));
+    }
+
+    @Test
+    void debeObtenerResumenesDesdeLaBaseDeDatos() {
+        // given
+        Reserva reserva1 = crearReserva(
+                4, 6, fecha, EstadoReserva.PENDIENTE
+        );
+
+        Reserva reserva2 = crearReserva(
+                8, 3, fecha.plusDays(1), EstadoReserva.CONFIRMADA
+        );
+
+        service.crearReserva(reserva1);
+        service.crearReserva(reserva2);
+
+        ReservaService otroService = new ReservaService(
+                reservaRepository,
+                clienteRepository
+        );
+
+        // when
+        List<ReservaResumen> resultado =
+                otroService.obtenerResumenes();
+
+        // then
+        assertEquals(2, resultado.size());
+        assertTrue(resultado.stream()
+                .anyMatch(resumen -> resumen.numeroMesa() == 4));
+        assertTrue(resultado.stream()
+                .anyMatch(resumen -> resumen.numeroMesa() == 8));
+    }
+
+    @Test
+    void debeReutilizarClienteExistenteCuandoElDniCoincide() {
+        // given
+        Cliente cliente1 = new Cliente(
+                "77777777A",
+                "Jose",
+                "666666666"
+        );
+
+        Cliente cliente2 = new Cliente(
+                "77777777A",
+                "Jose",
+                "666666666"
+        );
+
+        Reserva reserva1 = new Reserva(
+                cliente1,
+                4,
+                2,
+                fecha,
+                EstadoReserva.PENDIENTE
+        );
+
+        Reserva reserva2 = new Reserva(
+                cliente2,
+                8,
+                3,
+                fecha,
+                EstadoReserva.PENDIENTE
+        );
+
+        // when
+        service.crearReserva(reserva1);
+        service.crearReserva(reserva2);
+
+        // then
+        assertEquals(1, clienteRepository.count());
+        assertEquals(2, reservaRepository.count());
+        List<Reserva> reservasGuardadas = reservaRepository.findAll();
+
+        Long clienteIdPrimeraReserva =
+                reservasGuardadas.get(0).getCliente().getId();
+
+        Long clienteIdSegundaReserva =
+                reservasGuardadas.get(1).getCliente().getId();
+
+        assertEquals(
+                clienteIdPrimeraReserva,
+                clienteIdSegundaReserva
         );
     }
 

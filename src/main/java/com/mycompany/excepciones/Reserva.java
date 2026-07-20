@@ -119,4 +119,13 @@ public void cambiarFecha(LocalDate fecha){
         this.fecha=nuevaFecha;
         this.numeroMesa=nuevaMesa;
     }
+    public void asignarCliente(Cliente cliente) {
+        if (cliente == null) {
+            throw new IllegalArgumentException(
+                    "El cliente no puede ser nulo."
+            );
+        }
+
+        this.cliente = cliente;
+    }
 }
