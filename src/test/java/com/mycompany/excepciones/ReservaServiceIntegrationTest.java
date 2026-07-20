@@ -105,4 +105,31 @@ class ReservaServiceIntegrationTest {
                 resultado.getEstadoReserva()
         );
     }
+    @Test
+    void debePermitirAccederAlClienteDespuesDeBuscarLaReserva() {
+        LocalDate fecha = LocalDate.now().plusDays(1);
+
+        Cliente cliente = new Cliente(
+                "99999999C",
+                "Ana",
+                "666666668"
+        );
+
+        Reserva reserva = new Reserva(
+                cliente,
+                6,
+                3,
+                fecha,
+                EstadoReserva.PENDIENTE
+        );
+
+        service.crearReserva(reserva);
+
+        Reserva resultado = service.buscarReserva(6, fecha);
+
+        assertEquals(
+                "Ana",
+                resultado.getCliente().getNombre()
+        );
+    }
 }
