@@ -1,12 +1,29 @@
 package com.mycompany.excepciones;
 
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+
 import java.util.Objects;
 
+@Entity
+@Table(name = "clientes")
 public class Cliente {
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    @Column(nullable = false, unique = true)
+    private String dni;
+    @Column(nullable = false)
+    private String nombre;
+    @Column(nullable = false)
+    private String telefono;
 
-    private final String dni;
-    private final String nombre;
-    private final String telefono;
+    protected Cliente() {
+    }
 
     public Cliente(String dni, String nombre, String telefono) {
         if (dni == null || dni.isBlank()) {
@@ -42,6 +59,10 @@ public class Cliente {
 
     public String getTelefono() {
         return telefono;
+    }
+
+    public Long getId() {
+        return id;
     }
 
     @Override
