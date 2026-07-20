@@ -295,7 +295,7 @@ public class ReservaService {
                 reserva.cancelar();
         }
     }
-
+    @Transactional
     public void marcarReservaComoCancelada(int numeroMesa, LocalDate fecha) {
         cambiarEstadoReserva(numeroMesa, fecha, EstadoReserva.CANCELADA);
     }

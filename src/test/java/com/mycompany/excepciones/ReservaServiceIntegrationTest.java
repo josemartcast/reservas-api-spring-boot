@@ -74,4 +74,35 @@ class ReservaServiceIntegrationTest {
         assertEquals(8, resultado.getNumeroMesa());
         assertEquals(nuevaFecha, resultado.getFecha());
     }
+    @Test
+    void debePersistirLaCancelacionDeEstadoAlFinalizarLaTransaccion() {
+        LocalDate fecha = LocalDate.now().plusDays(1);
+
+        Cliente cliente = new Cliente(
+                "88888888B",
+                "Rosa",
+                "666666667"
+        );
+
+        Reserva reserva = new Reserva(
+                cliente,
+                5,
+                4,
+                fecha,
+                EstadoReserva.PENDIENTE
+        );
+
+        service.crearReserva(reserva);
+
+        service.marcarReservaComoCancelada(5, fecha);
+
+        Reserva resultado = reservaRepository
+                .findByNumeroMesaAndFecha(5, fecha)
+                .orElseThrow();
+
+        assertEquals(
+                EstadoReserva.CANCELADA,
+                resultado.getEstadoReserva()
+        );
+    }
 }
