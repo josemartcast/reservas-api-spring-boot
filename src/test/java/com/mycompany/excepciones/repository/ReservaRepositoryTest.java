@@ -3,8 +3,6 @@ package com.mycompany.excepciones.repository;
 import com.mycompany.excepciones.Cliente;
 import com.mycompany.excepciones.EstadoReserva;
 import com.mycompany.excepciones.Reserva;
-import com.mycompany.excepciones.ReservaService;
-import com.mycompany.excepciones.controller.ReservaController;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.data.jpa.test.autoconfigure.DataJpaTest;
@@ -31,7 +29,8 @@ class ReservaRepositoryTest {
         clienteRepository.save(cliente);
         LocalDate fecha = LocalDate.now().plusDays(1);
         Reserva reserva = new Reserva(cliente, 5, 8, fecha, EstadoReserva.PENDIENTE);
-        reservaRepository.save(reserva);
+        assertNull(reserva.getId());
+        reservaRepository.saveAndFlush(reserva);
         Optional<Reserva> resultado = reservaRepository.findByNumeroMesaAndFecha(5, fecha);
         assertTrue(resultado.isPresent());
         assertNotNull(resultado.get().getId());
