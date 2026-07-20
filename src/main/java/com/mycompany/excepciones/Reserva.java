@@ -1,13 +1,31 @@
 package com.mycompany.excepciones;
 
+import jakarta.persistence.*;
+
 import java.time.LocalDate;
-
+@Entity
+@Table(
+        name = "reservas",
+        uniqueConstraints = @UniqueConstraint(
+                name = "uk_reserva_mesa_fecha",
+                columnNames = {"numero_mesa", "fecha"}
+        )
+)
 public class Reserva {
-
-    private final Cliente cliente;
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "cliente_id", nullable = false)
+    private Cliente cliente;
+    @Column(name = "numero_mesa", nullable = false)
     private int numeroMesa;
+    @Column(name = "numero_personas", nullable = false)
     private int numeroPersonas;
+    @Column(nullable = false)
     private  LocalDate fecha;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
     private EstadoReserva estadoReserva;
 
     public Reserva(Cliente cliente, int numeroMesa, int numeroPersonas, LocalDate fecha, EstadoReserva estadoReserva) {
@@ -34,7 +52,11 @@ public class Reserva {
         this.numeroPersonas = numeroPersonas;
         this.numeroMesa = numeroMesa;
     }
-
+    protected Reserva() {
+    }
+    public Long getId() {
+        return id;
+    }
     public EstadoReserva getEstadoReserva() {
         return estadoReserva;
     }
