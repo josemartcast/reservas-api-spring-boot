@@ -1,35 +1,60 @@
 # ReservaCollectionsDia2
 
-Proyecto Maven para NetBeans con Java 21.
+API REST de gestión de reservas desarrollada con Java 21, Spring Boot, Spring Data JPA y Maven.
 
-## Ejercicio pendiente
+## Base de datos y ejecución local
 
-Implementar en `ReservaService`:
+La aplicación utiliza PostgreSQL 17, ejecutado mediante Docker Compose.
 
-```java
-public int calcularTotalPersonasReservadasPorFecha(String fecha)
+### Levantar PostgreSQL
+
+```powershell
+docker compose up -d
 ```
 
-Reglas:
+Comprobar el estado del contenedor:
 
-1. Validar que `fecha` no sea `null` ni esté en blanco.
-2. Crear un acumulador `int total = 0`.
-3. Recorrer todas las reservas.
-4. Si la fecha coincide, sumar `numeroPersonas`.
-5. Devolver el total.
+```powershell
+docker compose ps
+```
 
-## Resultado esperado
+### Arrancar la aplicación
 
-Con las reservas cargadas en `Main`, para la fecha `2026-06-17` debe devolver:
+```powershell
+mvn spring-boot:run
+```
+
+Por defecto, la aplicación se conecta a PostgreSQL mediante:
 
 ```text
-Total de personas reservadas: 6
+jdbc:postgresql://localhost:5432/reservas
 ```
 
-## Abrir en NetBeans
+La conexión puede configurarse mediante las variables:
 
-1. Descomprime el ZIP.
-2. NetBeans → File → Open Project.
-3. Selecciona la carpeta `ReservaCollectionsDia2`.
-4. Implementa el método.
-5. Ejecuta `Main`.
+```text
+DB_URL
+DB_USERNAME
+DB_PASSWORD
+```
+
+### Ejecutar los tests
+
+```powershell
+mvn test
+```
+
+Los tests utilizan una base de datos H2 en memoria y no modifican los datos de PostgreSQL.
+
+### Migraciones
+
+Flyway administra el esquema de PostgreSQL.
+
+Las migraciones se encuentran en:
+
+```text
+src/main/resources/db/migration
+```
+
+Una migración que ya se ha aplicado no debe modificarse. Cualquier cambio posterior del esquema debe añadirse en una
+nueva migración, por ejemplo `V3__descripcion.sql`.
