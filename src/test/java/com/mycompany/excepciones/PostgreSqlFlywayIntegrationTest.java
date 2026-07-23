@@ -14,6 +14,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.postgresql.PostgreSQLContainer;
 
 import java.time.LocalDate;
+import java.util.List;
 import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
@@ -40,31 +41,32 @@ class PostgreSqlFlywayIntegrationTest {
 
     @Test
     void debeAplicarLasMigracionesFlywayEnPostgreSql() {
-        Long migracionesAplicadas = jdbcTemplate.queryForObject(
+        List<String> versionesAplicadas = jdbcTemplate.queryForList(
                 """
-                SELECT COUNT(*)
-                FROM flyway_schema_history
-                WHERE success = true
-                """,
-                Long.class
+                        SELECT version
+                        FROM flyway_schema_history
+                        WHERE success = true
+                        """,
+                String.class
         );
 
-        assertEquals(2L, migracionesAplicadas);
+        assertTrue(versionesAplicadas.containsAll(List.of("1", "2")));
     }
+
     @Test
-    void debeGuardarYRecuperarUnaReservaEnPostgreSql(){
+    void debeGuardarYRecuperarUnaReservaEnPostgreSql() {
         LocalDate fechaFutura = LocalDate.now().plusDays(2);
-        Cliente cliente = new Cliente("77777777b","Jose","666666666");
+        Cliente cliente = new Cliente("77777777b", "Jose", "666666666");
         clienteRepository.saveAndFlush(cliente);
-        Reserva reserva = new Reserva(cliente,5,4,fechaFutura,EstadoReserva.PENDIENTE);
+        Reserva reserva = new Reserva(cliente, 5, 4, fechaFutura, EstadoReserva.PENDIENTE);
         reservaRepository.saveAndFlush(reserva);
         entityManager.clear();
         Optional<Reserva> resultado =
                 reservaRepository.findByNumeroMesaAndFecha(5, fechaFutura);
         assertTrue(resultado.isPresent());
         Reserva reservaRecuperada = resultado.get();
-        assertEquals("Jose",reservaRecuperada.getCliente().getNombre());
-        assertEquals(4,reservaRecuperada.getNumeroPersonas());
-        assertEquals(EstadoReserva.PENDIENTE,reservaRecuperada.getEstadoReserva());
+        assertEquals("Jose", reservaRecuperada.getCliente().getNombre());
+        assertEquals(4, reservaRecuperada.getNumeroPersonas());
+        assertEquals(EstadoReserva.PENDIENTE, reservaRecuperada.getEstadoReserva());
     }
 }
