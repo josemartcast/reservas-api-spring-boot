@@ -58,3 +58,13 @@ src/main/resources/db/migration
 
 Una migración que ya se ha aplicado no debe modificarse. Cualquier cambio posterior del esquema debe añadirse en una
 nueva migración, por ejemplo `V3__descripcion.sql`.
+
+La mayor parte de la suite utiliza H2 como base de datos en memoria.
+
+La prueba `PostgreSqlFlywayIntegrationTest` utiliza Testcontainers para
+verificar las migraciones de Flyway y la persistencia JPA contra una instancia
+real de PostgreSQL 17.
+
+Para ejecutar la suite completa, Docker debe estar iniciado. No es necesario
+ejecutar `docker compose up`, ya que Testcontainers crea automáticamente una
+base de datos temporal con un puerto aleatorio y la elimina al finalizar.
